@@ -98,8 +98,8 @@ $string['csv:delimiter'] = 'Delimiter';
 $string['csv:enclosure'] = 'Enclosure';
 $string['csv:upload:continue'] = 'Doorgaan';
 
-$string['page:view:statuslist.php:introduction:status'] = '<p>Dit overzicht toont de actief gemonitoorde gebruikers.<br/>
-Actief gemonitoorde gebruikers zijn gebruikers die daadwerkelijk worden gemonitoord (dit betekent dat ze niet zijn geconfigureerd om uitgesloten te zijn voor verwerking).<br/>
+$string['page:view:statuslist.php:introduction:status'] = '<p>Dit overzicht toont de actief gemonitorde gebruikers.<br/>
+Actief gemonitorde gebruikers zijn gebruikers die daadwerkelijk worden gemonitoord (dit betekent dat ze niet zijn geconfigureerd om uitgesloten te zijn voor verwerking).<br/>
 Dit overzicht wijkt dus in die zin af van het standaard gebruikersbeheer overzicht dat het <i>geen</i> gebruikers toont die uitgesloten zijn van verwerking
 door de mogelijkheden die dit blok bied om gebruikers en volledige cohorten uit te sluiten.</p>';
 $string['page:view:statuslist.php:introduction:delete'] = '<p>Dit overzicht toont de gebruikeraccounts die zullen worden verwijderd binnen
@@ -137,7 +137,7 @@ $string['label:users:potential'] = 'Potentiele gebruikers';
 $string['status:suspended'] = 'geschorst';
 $string['status:unsuspended'] = 'ontschorst';
 $string['status:deleted'] = 'verwijderd';
-$string['table:status:status'] = 'Actief gemonitoorde gebruikers';
+$string['table:status:status'] = 'Actief gemonitorde gebruikers';
 $string['table:status:suspended'] = 'Geschorste gebruikers';
 $string['table:status:tosuspend'] = 'Te schorsen gebruikers';
 $string['table:status:delete'] = 'Te verwijderen gebruikers';

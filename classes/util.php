@@ -39,12 +39,14 @@ use tool_usersuspension\statustable;
  * @author      RvD <helpdesk@sebsoft.nl>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class util {
+class util
+{
 
     /**
      * __construct() DO NOT SHOW / ALLOW TO BE CALLED: Open source version
      */
-    private function __construct() {
+    private function __construct()
+    {
         // Open source version.
     }
 
@@ -54,7 +56,8 @@ class util {
      *
      * @return string
      */
-    public static function get_prefix() {
+    public static function get_prefix()
+    {
         static $counter = 0;
         $counter++;
         return 'pfx' . $counter;
@@ -65,19 +68,28 @@ class util {
      *
      * @return string Excluded domains formatted for SQL NOT IN clause.
      */
-    public static function get_excluded_domains_for_sql_not_in() {
+    public static function get_excluded_domains_for_sql_not_in($useraliasprefix = 'u.')
+    {
         global $DB;
         $domainstoexcludestring = get_config('tool_usersuspension', 'domains_to_exclude');
         if (empty($domainstoexcludestring)) {
             return "";
         }
         $domainstoexcludearray = array_map('trim', explode(',', $domainstoexcludestring));
-        $conditions = array_map(function ($domain) use ($DB) {
-            $escapeddomain = $DB->sql_like_escape($domain);
-            return "email NOT LIKE '%@{$escapeddomain}'";
+        $escapedDomains = array_map(function ($domain) {
+            $trimmed = trim($domain);
+            return str_replace('.', '\.', $trimmed);
         }, $domainstoexcludearray);
-        $notlikeclause = implode(' AND ', $conditions);
-        return $notlikeclause;
+
+        // Join the escaped domains with pipe separators
+        return $useraliasprefix . 'email NOT REGEXP \'@(' . implode('|', $escapedDomains) . ')$\'';
+    }
+
+    public static function append_domain_exclusion(&$where, $useraliasprefix = 'u.'): void
+    {
+        if ($domainexclusion = static::get_excluded_domains_for_sql_not_in($useraliasprefix)) {
+            $where .= ' AND ' . $domainexclusion;
+        }
     }
 
     /**
@@ -86,7 +98,8 @@ class util {
      * @param float $size
      * @return string
      */
-    final public static function format_timespan($size) {
+    final public static function format_timespan($size)
+    {
         $neg = ($size < 0);
         $size = (float) abs($size);
         if ($size > 7 * 86400) {
@@ -108,14 +121,12 @@ class util {
      *
      * @return int number of actively monitored users
      */
-    public static function count_monitored_users() {
+    public static function count_monitored_users()
+    {
         global $DB;
         $where = 'deleted = :deleted';
         $params = ['deleted' => 0];
-        $excludeddomains = static::get_excluded_domains_for_sql_not_in();
-        if (!empty($excludeddomains)) {
-            $where .= ' AND ' . $excludeddomains;
-        }
+        static::append_domain_exclusion($where, 'u.');
         static::append_user_exclusion($where, $params, 'u.');
         return $DB->count_records_sql('SELECT COUNT(*) FROM {user} u WHERE ' . $where, $params);
     }
@@ -126,10 +137,12 @@ class util {
      *
      * @return int number of suspended users
      */
-    public static function count_suspended_users() {
+    public static function count_suspended_users()
+    {
         global $DB;
         $where = 'suspended = :suspended AND deleted = :deleted';
         $params = ['suspended' => 1, 'deleted' => 0];
+        static::append_domain_exclusion($where, 'u.');
         static::append_user_exclusion($where, $params, 'u.');
         return $DB->count_records_sql('SELECT COUNT(*) FROM {user} u WHERE ' . $where, $params);
     }
@@ -140,7 +153,8 @@ class util {
      *
      * @return int number of suspendable users
      */
-    public static function count_users_to_suspend() {
+    public static function count_users_to_suspend()
+    {
         global $DB;
         list($where, $params) = static::get_suspension_query(false);
         list($where2, $params2) = static::get_suspension_query(true);
@@ -155,7 +169,8 @@ class util {
      *
      * @return int number of deleteable users
      */
-    public static function count_users_to_delete() {
+    public static function count_users_to_delete()
+    {
         global $DB;
         list($where, $params) = static::get_deletion_query(false);
         list($where2, $params2) = static::get_deletion_query(true);
@@ -168,12 +183,13 @@ class util {
      *
      * @return boolean
      */
-    final public static function mark_users_to_suspend() {
+    final public static function mark_users_to_suspend()
+    {
         global $DB;
-        if (!(bool)config::get('enabled')) {
+        if (!(bool) config::get('enabled')) {
             return false;
         }
-        if (!(bool)config::get('enablesmartdetect')) {
+        if (!(bool) config::get('enablesmartdetect')) {
             return false;
         }
         $lastrun = static::get_lastrun_config('smartdetect', 0, false);
@@ -195,16 +211,17 @@ class util {
      * Warns inactive users that they will be suspended soon. This must be run *AFTER* user suspension is done,
      * or it will email suspended users if this is the first run.
      */
-    final public static function warn_users_of_suspension() {
+    final public static function warn_users_of_suspension()
+    {
         global $DB;
 
-        if (!(bool)config::get('enabled')) {
+        if (!(bool) config::get('enabled')) {
             return false;
         }
-        if (!(bool)config::get('enablesmartdetect')) {
+        if (!(bool) config::get('enablesmartdetect')) {
             return false;
         }
-        if (!(bool)config::get('enablesmartdetect_warning')) {
+        if (!(bool) config::get('enablesmartdetect_warning')) {
             return false;
         }
         // Run in parallel with the suspensions.
@@ -215,13 +232,13 @@ class util {
         }
 
         // Do nothing if warningtime is 0.
-        $warningtime = (int)config::get('smartdetect_warninginterval');
+        $warningtime = (int) config::get('smartdetect_warninginterval');
         if ($warningtime <= 0) {
             return false;
         }
 
         // Get the query for users to warn.
-        $warningthreshold = (time() - (int)config::get('smartdetect_suspendafter')) + $warningtime;
+        $warningthreshold = (time() - (int) config::get('smartdetect_suspendafter')) + $warningtime;
         list($where, $params) = static::get_suspension_query(true, $warningthreshold);
         $sql = "SELECT * FROM {user} u WHERE $where";
         $users = $DB->get_records_sql($sql, $params);
@@ -243,12 +260,13 @@ class util {
      *
      * @return boolean
      */
-    final public static function delete_suspended_users() {
+    final public static function delete_suspended_users()
+    {
         global $DB;
-        if (!(bool)config::get('enabled')) {
+        if (!(bool) config::get('enabled')) {
             return false;
         }
-        if (!(bool)config::get('enablecleanup')) {
+        if (!(bool) config::get('enablecleanup')) {
             return false;
         }
         $lastrun = static::get_lastrun_config('cleanup', 0, false);
@@ -274,7 +292,8 @@ class util {
      * @param mixed $default default value to return if this config is not set
      * @param bool $autosetnew if true, automatically insert current time for the last run configuration
      */
-    final protected static function get_lastrun_config($type, $default = null, $autosetnew = true) {
+    final protected static function get_lastrun_config($type, $default = null, $autosetnew = true)
+    {
         $value = get_config('tool_usersuspension', $type . '_lastrun');
         if ($autosetnew) {
             static::set_lastrun_config($type);
@@ -287,7 +306,8 @@ class util {
      *
      * @param string $type
      */
-    final public static function set_lastrun_config($type) {
+    final public static function set_lastrun_config($type)
+    {
         set_config($type . '_lastrun', time(), 'tool_usersuspension');
     }
 
@@ -298,7 +318,8 @@ class util {
      * @param bool $automated true if a result of automated suspension, false if suspending
      *              is a result of a manual action
      */
-    final public static function do_suspend_user($user, $automated = true) {
+    final public static function do_suspend_user($user, $automated = true)
+    {
         global $USER, $CFG;
         require_once($CFG->dirroot . '/user/lib.php');
         // Piece of code taken from /admin/user.php so we dance just like moodle does.
@@ -314,11 +335,11 @@ class util {
             static::process_status_record($user, 'suspended', $emailsent);
             // Trigger event.
             $event = event\user_suspended::create([
-                        'objectid' => $user->id,
-                        'relateduserid' => $user->id,
-                        'context' => \context_user::instance($user->id),
-                        'other' => [],
-                ]);
+                'objectid' => $user->id,
+                'relateduserid' => $user->id,
+                'context' => \context_user::instance($user->id),
+                'other' => [],
+            ]);
             $event->trigger();
             return true;
         }
@@ -330,12 +351,18 @@ class util {
      *
      * @param \stdClass $user
      */
-    final public static function do_unsuspend_user($user) {
+    final public static function do_unsuspend_user($user)
+    {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/user/lib.php');
         // Piece of code taken from /admin/user.php so we dance just like moodle does.
-        if ($user = $DB->get_record('user', ['id' => $user->id,
-                'mnethostid' => $CFG->mnet_localhost_id, 'deleted' => 0])) {
+        if (
+            $user = $DB->get_record('user', [
+                'id' => $user->id,
+                'mnethostid' => $CFG->mnet_localhost_id,
+                'deleted' => 0
+            ])
+        ) {
             if ($user->suspended != 0) {
                 $user->suspended = 0;
                 user_update_user($user, false, true);
@@ -343,11 +370,11 @@ class util {
                 $emailsent = (static::process_user_unsuspended_email($user) === true);
                 // Trigger event.
                 $event = event\user_unsuspended::create([
-                            'objectid' => $user->id,
-                            'relateduserid' => $user->id,
-                            'context' => \context_user::instance($user->id),
-                            'other' => [],
-                        ]);
+                    'objectid' => $user->id,
+                    'relateduserid' => $user->id,
+                    'context' => \context_user::instance($user->id),
+                    'other' => [],
+                ]);
                 $event->trigger();
                 // Create status record.
                 static::process_status_record($user, 'unsuspended', $emailsent);
@@ -363,7 +390,8 @@ class util {
      * @param \stdClass $user
      * @return bool true if successful, false otherwise
      */
-    final public static function do_delete_user($user) {
+    final public static function do_delete_user($user)
+    {
         global $USER, $CFG;
         require_once($CFG->dirroot . '/user/lib.php');
         // Piece of code taken from /admin/user.php so we dance just like moodle does.
@@ -389,7 +417,8 @@ class util {
      * @param string $status status string
      * @param bool $emailsent whether or not the email was sent
      */
-    final public static function process_status_record($user, $status, $emailsent) {
+    final public static function process_status_record($user, $status, $emailsent)
+    {
         global $DB;
         // Move existing record to log.
         $recordstolog = $DB->get_records('tool_usersuspension_status', ['userid' => $user->id]);
@@ -417,7 +446,8 @@ class util {
      * @param array $params
      * @param string $useraliasprefix alias prefix for users (e.g. 'u.' to indicate u.id)
      */
-    public static function append_user_exclusion(&$where, &$params, $useraliasprefix = '') {
+    public static function append_user_exclusion(&$where, &$params, $useraliasprefix = '')
+    {
         global $CFG, $DB;
         // Set standard exclusions.
         $excludeids = [1, $CFG->siteguest]; // Guest account.
@@ -427,7 +457,7 @@ class util {
         $excludeids = array_unique($excludeids);
 
         list($notinsql, $uparams) = $DB->get_in_or_equal($excludeids, SQL_PARAMS_NAMED, 'uidexc', false, 0);
-        $where .= ' AND ' . $useraliasprefix . 'id '.$notinsql;
+        $where .= ' AND ' . $useraliasprefix . 'id ' . $notinsql;
         $params = $params + $uparams;
     }
 
@@ -437,16 +467,29 @@ class util {
      *
      * @return array list of user ids
      */
-    public static function get_user_exclusion_list() {
+    public static function get_user_exclusion_list()
+    {
         global $DB;
         // First load users.
-        $userids = $DB->get_fieldset_select('tool_usersuspension_excl', 'refid',
-                'type = :type', ['type' => 'user']);
-        $cohortids = $DB->get_fieldset_select('tool_usersuspension_excl', 'refid',
-                'type = :type', ['type' => 'cohort']);
+        $userids = $DB->get_fieldset_select(
+            'tool_usersuspension_excl',
+            'refid',
+            'type = :type',
+            ['type' => 'user']
+        );
+        $cohortids = $DB->get_fieldset_select(
+            'tool_usersuspension_excl',
+            'refid',
+            'type = :type',
+            ['type' => 'cohort']
+        );
         foreach ($cohortids as $cohortid) {
-            $cohortuserids = $DB->get_fieldset_select('cohort_members', 'userid',
-                    'cohortid = :cohid', ['cohid' => $cohortid]);
+            $cohortuserids = $DB->get_fieldset_select(
+                'cohort_members',
+                'userid',
+                'cohortid = :cohid',
+                ['cohid' => $cohortid]
+            );
             $userids = array_merge($userids, $cohortuserids);
         }
 
@@ -464,7 +507,8 @@ class util {
      * @param int $customtime A custom timestamp to perform the comparison against.
      * @return array A list containing the constructed where part of the sql and an array of parameters.
      */
-    public static function get_suspension_query($pastsuspensiondate = true, $customtime = null) {
+    public static function get_suspension_query($pastsuspensiondate = true, $customtime = null)
+    {
         global $CFG;
         $uniqid = static::get_prefix();
         $detectoperator = $pastsuspensiondate ? '<' : '>';
@@ -476,12 +520,14 @@ class util {
         $where .= " OR (u.auth = 'manual' AND u.firstaccess = 0 AND u.lastaccess = 0 ";
         $where .= "     AND u.timemodified > 0 AND u.timemodified $detectoperator :{$uniqid}time3)";
         $where .= ")";
-        $params = ["{$uniqid}mnethost" => $CFG->mnet_localhost_id,
+        $params = [
+            "{$uniqid}mnethost" => $CFG->mnet_localhost_id,
             "{$uniqid}time1" => $timecheck,
             "{$uniqid}time2" => $timecheck,
             "{$uniqid}time3" => $timecheck,
         ];
         // Append user exclusion.
+        static::append_domain_exclusion($where, 'u.');
         static::append_user_exclusion($where, $params, 'u.');
         return [$where, $params];
     }
@@ -496,16 +542,18 @@ class util {
      *          when users would get deleted.
      * @return array A list containing the constructed where part of the sql and an array of parameters.
      */
-    public static function get_deletion_query($pastdeletiondate = true) {
+    public static function get_deletion_query($pastdeletiondate = true)
+    {
         global $CFG;
         $detectoperator = $pastdeletiondate ? '<' : '>';
         $uniqid = static::get_prefix();
         $params = [
             "{$uniqid}mnethost" => $CFG->mnet_localhost_id,
-            "{$uniqid}" => time() - (int)config::get('cleanup_deleteafter'),
+            "{$uniqid}" => time() - (int) config::get('cleanup_deleteafter'),
         ];
         $where = "u.suspended = 1 AND u.confirmed = 1 AND u.deleted = 0 "
-                . "AND u.mnethostid = :{$uniqid}mnethost AND u.timemodified $detectoperator :{$uniqid}";
+            . "AND u.mnethostid = :{$uniqid}mnethost AND u.timemodified $detectoperator :{$uniqid}";
+        static::append_domain_exclusion($where, 'u.');
         static::append_user_exclusion($where, $params, 'u.');
         return [$where, $params];
     }
@@ -516,7 +564,8 @@ class util {
      *
      * @param \moodle_url $url
      */
-    public static function view_process_cohort_exclusion($url) {
+    public static function view_process_cohort_exclusion($url)
+    {
         global $CFG, $OUTPUT;
         require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/usersuspension/classes/forms/exclude/cohort.php');
         $formurl = clone $url;
@@ -551,7 +600,8 @@ class util {
      *
      * @param \moodle_url $url
      */
-    public static function view_process_user_exclusion($url) {
+    public static function view_process_user_exclusion($url)
+    {
         global $CFG, $OUTPUT;
         require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/usersuspension/classes/forms/exclude/user.php');
         $formurl = clone $url;
@@ -588,8 +638,9 @@ class util {
      *              is a result of a manual action
      * @return void
      */
-    public static function process_user_suspended_email($user, $automated = true) {
-        if (!(bool)config::get('send_suspend_email')) {
+    public static function process_user_suspended_email($user, $automated = true)
+    {
+        if (!(bool) config::get('send_suspend_email')) {
             return false;
         }
         // Prepare and send email.
@@ -599,14 +650,26 @@ class util {
         $a->timeinactive = static::format_timespan(config::get('smartdetect_suspendafter'));
         $a->contact = $from->email;
         $a->signature = fullname($from);
-        $subject = get_string_manager()->get_string('email:user:suspend:subject',
-                'tool_usersuspension', $a, $user->lang);
+        $subject = get_string_manager()->get_string(
+            'email:user:suspend:subject',
+            'tool_usersuspension',
+            $a,
+            $user->lang
+        );
         if ($automated) {
-            $messagehtml = get_string_manager()->get_string('email:user:suspend:auto:body',
-                    'tool_usersuspension', $a, $user->lang);
+            $messagehtml = get_string_manager()->get_string(
+                'email:user:suspend:auto:body',
+                'tool_usersuspension',
+                $a,
+                $user->lang
+            );
         } else {
-            $messagehtml = get_string_manager()->get_string('email:user:suspend:manual:body',
-                    'tool_usersuspension', $a, $user->lang);
+            $messagehtml = get_string_manager()->get_string(
+                'email:user:suspend:manual:body',
+                'tool_usersuspension',
+                $a,
+                $user->lang
+            );
         }
         $messagetext = format_text_email($messagehtml, FORMAT_HTML);
         return email_to_user($user, $from, $subject, $messagetext, $messagehtml);
@@ -618,7 +681,8 @@ class util {
      * @param \stdClass $user
      * @return void
      */
-    public static function process_user_warning_email($user) {
+    public static function process_user_warning_email($user)
+    {
         // Prepare and send email.
         $from = \core_user::get_support_user();
         $a = new \stdClass();
@@ -640,8 +704,9 @@ class util {
      * @param \stdClass $user
      * @return void
      */
-    public static function process_user_unsuspended_email($user) {
-        if (!(bool)config::get('send_suspend_email')) {
+    public static function process_user_unsuspended_email($user)
+    {
+        if (!(bool) config::get('send_suspend_email')) {
             return false;
         }
         // Prepare and send email.
@@ -650,10 +715,18 @@ class util {
         $a->name = fullname($user);
         $a->contact = $from->email;
         $a->signature = fullname($from);
-        $subject = get_string_manager()->get_string('email:user:unsuspend:subject',
-                'tool_usersuspension', $a, $user->lang);
-        $messagehtml = get_string_manager()->get_string('email:user:unsuspend:body',
-                'tool_usersuspension', $a, $user->lang);
+        $subject = get_string_manager()->get_string(
+            'email:user:unsuspend:subject',
+            'tool_usersuspension',
+            $a,
+            $user->lang
+        );
+        $messagehtml = get_string_manager()->get_string(
+            'email:user:unsuspend:body',
+            'tool_usersuspension',
+            $a,
+            $user->lang
+        );
         $messagetext = format_text_email($messagehtml, FORMAT_HTML);
         return email_to_user($user, $from, $subject, $messagetext, $messagehtml);
     }
@@ -664,8 +737,9 @@ class util {
      * @param \stdClass $user
      * @return bool true if sent, false if disabled or error
      */
-    public static function process_user_deleted_email($user) {
-        if (!(bool)config::get('send_delete_email')) {
+    public static function process_user_deleted_email($user)
+    {
+        if (!(bool) config::get('send_delete_email')) {
             return false;
         }
         // Prepare and send email.
@@ -675,10 +749,18 @@ class util {
         $a->timesuspended = static::format_timespan(config::get('cleanup_deleteafter'));
         $a->contact = $from->email;
         $a->signature = fullname($from);
-        $subject = get_string_manager()->get_string('email:user:delete:subject',
-                'tool_usersuspension', $a, $user->lang);
-        $messagehtml = get_string_manager()->get_string('email:user:delete:body',
-                'tool_usersuspension', $a, $user->lang);
+        $subject = get_string_manager()->get_string(
+            'email:user:delete:subject',
+            'tool_usersuspension',
+            $a,
+            $user->lang
+        );
+        $messagehtml = get_string_manager()->get_string(
+            'email:user:delete:body',
+            'tool_usersuspension',
+            $a,
+            $user->lang
+        );
         $messagetext = format_text_email($messagehtml, FORMAT_HTML);
         return email_to_user($user, $from, $subject, $messagetext, $messagehtml);
     }
@@ -688,13 +770,17 @@ class util {
      *
      * @return boolean
      */
-    public static function clean_logs() {
+    public static function clean_logs()
+    {
         global $DB;
-        if (!(bool)config::get('enablecleanlogs')) {
+        if (!(bool) config::get('enablecleanlogs')) {
             return false;
         }
-        $DB->delete_records_select('tool_usersuspension_log', 'timecreated < ?',
-                [time() - (int)config::get('cleanlogsafter')]);
+        $DB->delete_records_select(
+            'tool_usersuspension_log',
+            'timecreated < ?',
+            [time() - (int) config::get('cleanlogsafter')]
+        );
         return true;
     }
 
@@ -705,7 +791,8 @@ class util {
      * @param string $class class or type of message. Please use either 'success' or 'error'
      * @return void
      */
-    public static function print_notification($msg, $class = 'success') {
+    public static function print_notification($msg, $class = 'success')
+    {
         global $OUTPUT;
         $pix = '<img src="' . $OUTPUT->image_url('msg_' . $class, 'tool_usersuspension') . '"/>';
         echo '<div class="tool-usersuspension-notification-' . $class . '">' . $pix . ' ' . $msg . '</div>';
@@ -718,7 +805,8 @@ class util {
      * @param string $buttontext the text to show on the button.
      * @return string the HTML to output.
      */
-    public static function continue_button($url, $buttontext) {
+    public static function continue_button($url, $buttontext)
+    {
         global $OUTPUT;
         if (!($url instanceof \moodle_url)) {
             $url = new \moodle_url($url);
@@ -741,8 +829,15 @@ class util {
      * @param bool $linkedwhenselected whether to display a link under the tab name when it's selected
      * @return \tabobject
      */
-    public static function pictabobject($id, $pix = null, $component = 'tool_usersuspension', $link = null,
-            $text = '', $title = '', $linkedwhenselected = false) {
+    public static function pictabobject(
+        $id,
+        $pix = null,
+        $component = 'tool_usersuspension',
+        $link = null,
+        $text = '',
+        $title = '',
+        $linkedwhenselected = false
+    ) {
         global $OUTPUT;
         $img = '';
         if ($pix !== null) {
@@ -757,21 +852,38 @@ class util {
      * @param array $params basic url parameters
      * @param string $selected id of the selected tab
      */
-    public static function print_view_tabs($params, $selected) {
+    public static function print_view_tabs($params, $selected)
+    {
         global $CFG, $OUTPUT;
         $tabs = [];
         // Add exclusions.
-        $exclusions = static::pictabobject('exclusions', 'exclusions', 'tool_usersuspension',
+        $exclusions = static::pictabobject(
+            'exclusions',
+            'exclusions',
+            'tool_usersuspension',
             new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/exclude.php', $params),
-                get_string('table:exclusions', 'tool_usersuspension'));
-        $exclusions->subtree[] = static::pictabobject('excludeaddcohort', null, 'tool_usersuspension',
-            new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/exclude.php',
-                    $params + ['action' => 'add', 'addtype' => 'cohort', 'sesskey' => sesskey()]),
-                get_string('action:exclude:add:cohort', 'tool_usersuspension'));
-        $exclusions->subtree[] = static::pictabobject('excludeadduser', null, 'tool_usersuspension',
-            new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/exclude.php',
-                    $params + ['action' => 'add', 'addtype' => 'user', 'sesskey' => sesskey()]),
-                get_string('action:exclude:add:user', 'tool_usersuspension'));
+            get_string('table:exclusions', 'tool_usersuspension')
+        );
+        $exclusions->subtree[] = static::pictabobject(
+            'excludeaddcohort',
+            null,
+            'tool_usersuspension',
+            new \moodle_url(
+                '/' . $CFG->admin . '/tool/usersuspension/view/exclude.php',
+                $params + ['action' => 'add', 'addtype' => 'cohort', 'sesskey' => sesskey()]
+            ),
+            get_string('action:exclude:add:cohort', 'tool_usersuspension')
+        );
+        $exclusions->subtree[] = static::pictabobject(
+            'excludeadduser',
+            null,
+            'tool_usersuspension',
+            new \moodle_url(
+                '/' . $CFG->admin . '/tool/usersuspension/view/exclude.php',
+                $params + ['action' => 'add', 'addtype' => 'user', 'sesskey' => sesskey()]
+            ),
+            get_string('action:exclude:add:user', 'tool_usersuspension')
+        );
         $tabs[] = $exclusions;
         // Add statuslist tabs.
         foreach (statustable::get_viewtypes() as $type) {
@@ -792,39 +904,68 @@ class util {
                     $counter = ' (' . static::count_monitored_users() . ')';
                     break;
             }
-            $tabs[] = static::pictabobject($type, 'status_' . $type, 'tool_usersuspension',
-                    $url, get_string('table:status:' . $type, 'tool_usersuspension') . $counter);
+            $tabs[] = static::pictabobject(
+                $type,
+                'status_' . $type,
+                'tool_usersuspension',
+                $url,
+                get_string('table:status:' . $type, 'tool_usersuspension') . $counter
+            );
         }
         // Add upload tab.
-        if ((bool)config::get('enablefromupload')) {
-            $upload = static::pictabobject('upload', 'upload', 'tool_usersuspension',
+        if ((bool) config::get('enablefromupload')) {
+            $upload = static::pictabobject(
+                'upload',
+                'upload',
+                'tool_usersuspension',
                 new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/upload.php', $params),
-                    get_string('link:upload', 'tool_usersuspension'));
+                get_string('link:upload', 'tool_usersuspension')
+            );
             $tabs[] = $upload;
         }
 
         // Add logs tabs.
-        $logs = static::pictabobject('logs', 'logs', 'tool_usersuspension',
+        $logs = static::pictabobject(
+            'logs',
+            'logs',
+            'tool_usersuspension',
             new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/log.php', $params + ['history' => 0]),
-                get_string('table:logs', 'tool_usersuspension'));
-        $logs->subtree[] = static::pictabobject('log_latest', null, 'tool_usersuspension',
+            get_string('table:logs', 'tool_usersuspension')
+        );
+        $logs->subtree[] = static::pictabobject(
+            'log_latest',
+            null,
+            'tool_usersuspension',
             new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/log.php', $params + ['history' => 0]),
-                get_string('table:log:latest', 'tool_usersuspension'));
-        $logs->subtree[] = static::pictabobject('log_all', null, 'tool_usersuspension',
+            get_string('table:log:latest', 'tool_usersuspension')
+        );
+        $logs->subtree[] = static::pictabobject(
+            'log_all',
+            null,
+            'tool_usersuspension',
             new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/log.php', $params + ['history' => 1]),
-                get_string('table:log:all', 'tool_usersuspension'));
+            get_string('table:log:all', 'tool_usersuspension')
+        );
         $tabs[] = $logs;
 
         // Add tests.
-        $testfromfolder = static::pictabobject('testfromfolder', null, 'tool_usersuspension',
+        $testfromfolder = static::pictabobject(
+            'testfromfolder',
+            null,
+            'tool_usersuspension',
             new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/testfromfolder.php', $params),
-                get_string('testfromfolder', 'tool_usersuspension'));
+            get_string('testfromfolder', 'tool_usersuspension')
+        );
         $tabs[] = $testfromfolder;
 
         // Add notifications tabs.
-        $notifications = static::pictabobject('notifications', null, 'tool_usersuspension',
+        $notifications = static::pictabobject(
+            'notifications',
+            null,
+            'tool_usersuspension',
             new \moodle_url('/' . $CFG->admin . '/tool/usersuspension/view/notifications.php', $params),
-                get_string('tab:notifications', 'tool_usersuspension'));
+            get_string('tab:notifications', 'tool_usersuspension')
+        );
         $tabs[] = $notifications;
 
         echo $OUTPUT->tabtree($tabs, $selected);
@@ -833,34 +974,35 @@ class util {
     /**
      * Generate messages (using core notifications) for (every) frontpage in this tool.
      */
-    public static function generate_notifications() {
+    public static function generate_notifications()
+    {
         $messages = [];
         // Main plugin enabled.
-        if (!(bool)config::get('enabled')) {
+        if (!(bool) config::get('enabled')) {
             $messages[] = get_string('config:tool:disabled', 'tool_usersuspension');
         }
         // Auto-suspend enabled.
-        if (!(bool)config::get('enablesmartdetect')) {
+        if (!(bool) config::get('enablesmartdetect')) {
             $messages[] = get_string('config:smartdetect:disabled', 'tool_usersuspension');
         }
         // Auto-delete enabled.
-        if (!(bool)config::get('enablecleanup')) {
+        if (!(bool) config::get('enablecleanup')) {
             $messages[] = get_string('config:cleanup:disabled', 'tool_usersuspension');
         }
         // Task(s).
-        if (!(bool)config::get('enableunsuspendfromfolder')) {
+        if (!(bool) config::get('enableunsuspendfromfolder')) {
             $messages[] = get_string('config:unsuspendfromfolder:disabled', 'tool_usersuspension');
         }
-        if (!(bool)config::get('enablefromfolder')) {
+        if (!(bool) config::get('enablefromfolder')) {
             $messages[] = get_string('config:fromfolder:disabled', 'tool_usersuspension');
         }
         // Folder(s).
         $uploadedfolder = config::get('uploadfolder');
         if (!file_exists($uploadedfolder) || !is_dir($uploadedfolder)) {
-            $messages[] = 'CSV upload folder "'.$uploadedfolder.'" does not exist';
+            $messages[] = 'CSV upload folder "' . $uploadedfolder . '" does not exist';
         }
         if (!is_readable($uploadedfolder) || !is_dir($uploadedfolder)) {
-            $messages[] = 'CSV upload folder "'.$uploadedfolder.'" is not readable';
+            $messages[] = 'CSV upload folder "' . $uploadedfolder . '" is not readable';
         }
         if (!empty($messages)) {
             return \html_writer::div(implode('<br/>', $messages), 'alert alert-warning');
