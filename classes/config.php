@@ -41,7 +41,7 @@ class config {
 
     /**
      *
-     * @var whether or not config has been loaded yet
+     * @var $loaded whether or not config has been loaded yet
      */
     private static $loaded = false;
 

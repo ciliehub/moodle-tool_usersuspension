@@ -87,6 +87,10 @@ Wanneer geautomatiseerde verwijdering van gebruikers absoluut niet gewenst is, s
 $string['setting:enablecleanup'] = 'Opschonen inschakelen';
 $string['setting:desc:enablecleanup'] = 'Schakel opschoning van gebruikers in';
 $string['setting:cleanup_interval'] = 'Opschoningsinterval';
+$string['setting:enablecleanupwarning'] = 'E-mails verzenden tbv verwijderen??';
+$string['setting:desc:enablecleanupwarning'] = 'Indien ingeschakeld wordt een email verstuurd naar de eindgebruiker dat het account binnenkort wordt verwijderd.';
+$string['setting:cleanup_warninginterval'] = 'Waarschuwingsperiode';
+$string['setting:desc:cleanup_warninginterval'] = 'Zet de tijd voor verwijdering zodat een eindgebruiker een email zal krijgen over de op hand zijnde verwijdering van diens account.';
 $string['setting:desc:cleanup_interval'] = 'Stel interval in hoe vaak opschonen wordt verwerkt';
 $string['setting:cleanup_deleteafter'] = 'Interval voor verwijderen';
 $string['setting:desc:cleanup_deleteafter'] = 'Stel het interval in dat detecteert wanneer gebruikers verwijderd worden nadat ze zijn geschorst';
@@ -160,6 +164,10 @@ $string['email:user:unsuspend:body'] = '<p>Beste {$a->name}</p>
 <p>Als je denkt dat dit ongewenst is of je wilt de activering ongedaan laten maken,
 neem dan contact op met {$a->contact}</p>
 <p>Met vriendelijke groet,<br/>{$a->signature}</p>';
+$string['email:user:cleanupwarning:subject'] = 'Je account zal binnenkort verwijderd worden.';
+$string['email:user:cleanupwarning:body'] = '<p>Beste {$a->name}</p>
+<p>Je account zal over {$a->warningperiod} worden verwijderd.</p>
+<p>Groeten<br/>{$a->signature}</p>';
 $string['email:user:delete:subject'] = 'Je account is verwijderd';
 $string['email:user:delete:body'] = '<p>Beste {$a->name}</p>
 <p>Je account is verwijderd nadat je {$a->timesuspended} geschorst bent geweest</p>

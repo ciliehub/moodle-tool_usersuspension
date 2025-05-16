@@ -66,7 +66,7 @@ class mark extends \core\task\scheduled_task {
         }
         $result = false;
         $result = $result || \tool_usersuspension\util::mark_users_to_suspend();
-        // Now email any users in the warning period.
+        // Now email any users in the suspension warning period.
         $result = $result || \tool_usersuspension\util::warn_users_of_suspension();
 
         if ($result) {

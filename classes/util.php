@@ -248,11 +248,59 @@ class util
                 continue;
             }
 
-            static::process_user_warning_email($user);
+            static::process_user_smartdetect_warning_email($user);
             // Mark the user as warned. This will be reset on their first successful login post warning.
             set_user_preference('tool_usersuspension_warned', true, $user);
         }
         return true;
+    }
+
+    /**
+     * Warns suspended users that they will be deleted soon. This must be run *AFTER* user suspension is done,
+     * or it will email suspended users if this is the first run.
+     */
+    final public static function warn_users_of_cleanup()
+    {
+        global $DB;
+
+        if (!(bool) config::get('enabled')) {
+            return false;
+        }
+        if (!(bool) config::get('enablecleanup')) {
+            return false;
+        }
+        if (!(bool) config::get('enablecleanup_warning')) {
+            return false;
+        }
+        // Run in parallel with the cleanups.
+        $lastrun = static::get_lastrun_config('cleanup', 0, true);
+        $deltatime = time() - $lastrun;
+        if ($deltatime < config::get('cleanup_interval')) {
+            return false;
+        }
+
+        // Do nothing if warningtime is 0.
+        $warningtime = (int) config::get('cleanup_warninginterval');
+        if ($warningtime <= 0) {
+            return false;
+        }
+
+        // Get the query for users to warn.
+        $warningthreshold = (time() - (int) config::get('cleanup_deleteafter')) + $warningtime;
+        list($where, $params) = static::get_cleanup_warning_query(true, $warningthreshold);
+        $sql = "SELECT * FROM {user} u WHERE $where";
+        $users = $DB->get_records_sql($sql, $params);
+        foreach ($users as $user) {
+            // Check whether the user was already warned.
+            if ((get_user_preferences('tool_usersuspension_cleanupwarned', false, $user))) {
+                continue;
+            }
+            // unsuspend user in memory to send mail
+            $user->suspended = 0;
+            static::process_user_cleanup_warning_email($user);
+            // Mark the user as warned. This will be reset on their first successful login post warning.
+            set_user_preference('tool_usersuspension_cleanupwarned', true, $user);
+        }
     }
 
     /**
@@ -280,6 +328,8 @@ class util
         foreach ($users as $user) {
             // Delete user here.
             static::do_delete_user($user);
+            // in case users will be deleted right away (much overdue), prevent the warning email
+            set_user_preference('tool_usersuspension_cleanupwarned', true, $user);
         }
         $users->close();
         return true;
@@ -326,7 +376,7 @@ class util
         if (!is_siteadmin($user) && $USER->id != $user->id && $user->suspended != 1) {
             $user->suspended = 1;
             // Force logout.
-            \core\session\manager::kill_user_sessions($user->id);
+            \core\session\manager::destroy_user_sessions($user->id);
             user_update_user($user, false, true);
             // Process email if applicable.
             $user->suspended = 0; // This is to prevent mail from not sending.
@@ -397,7 +447,7 @@ class util
         // Piece of code taken from /admin/user.php so we dance just like moodle does.
         if (!is_siteadmin($user) && $USER->id != $user->id && $user->deleted != 1) {
             // Force logout.
-            \core\session\manager::kill_user_sessions($user->id);
+            \core\session\manager::destroy_user_sessions($user->id);
             user_delete_user($user);
             // Process email id applicable.
             $user->suspended = 0; // This is to prevent mail from not sending.
@@ -638,7 +688,7 @@ class util
      *              is a result of a manual action
      * @return void
      */
-    public static function process_user_suspended_email($user, $automated = true)
+    public static function process_user_suspended_email($user, $automated = true): bool
     {
         if (!(bool) config::get('send_suspend_email')) {
             return false;
@@ -681,7 +731,7 @@ class util
      * @param \stdClass $user
      * @return void
      */
-    public static function process_user_warning_email($user)
+    public static function process_user_smartdetect_warning_email($user): bool
     {
         // Prepare and send email.
         $from = \core_user::get_support_user();
@@ -699,12 +749,60 @@ class util
     }
 
     /**
+     * Send an e-mail due to a user facing suspension due to inactivity.
+     *
+     * @param \stdClass $user
+     * @return void
+     */
+    public static function process_user_cleanup_warning_email($user): bool
+    {
+        // Prepare and send email.
+        $from = \core_user::get_support_user();
+        $a = new \stdClass();
+        $a->name = fullname($user);
+        $a->cleanupinterval = static::format_timespan(config::get('cleanup_deleteafter'));
+        $a->warningperiod = static::format_timespan(config::get('cleanup_warninginterval'));
+        $a->contact = $from->email;
+        $a->signature = fullname($from);
+        $subject = get_string('email:user:cleanupwarning:subject', 'tool_usersuspension', $a);
+        $messagehtml = get_string('email:user:cleanupwarning:body', 'tool_usersuspension', $a);
+
+        $messagetext = format_text_email($messagehtml, FORMAT_HTML);
+        return email_to_user($user, $from, $subject, $messagetext, $messagehtml);
+    }
+
+    public static function get_cleanup_warning_query($pastsuspensiondate = true, $customtime = null)
+    {
+        global $CFG;
+        $uniqid = static::get_prefix();
+        $detectoperator = $pastsuspensiondate ? '<' : '>';
+        $timecheck = !empty($customtime) ? $customtime : time() - (config::get('cleanup_deleteafter'));
+        $where = "u.confirmed = 1 AND u.suspended = 1 AND u.deleted = 0 AND u.mnethostid = :{$uniqid}mnethost ";
+        $where .= "AND (";
+        $where .= "(u.lastaccess = 0 AND u.firstaccess > 0 AND u.firstaccess $detectoperator :{$uniqid}time1)";
+        $where .= " OR (u.lastaccess > 0 AND u.lastaccess $detectoperator :{$uniqid}time2)";
+        $where .= " OR (u.auth = 'manual' AND u.firstaccess = 0 AND u.lastaccess = 0 ";
+        $where .= "     AND u.timemodified > 0 AND u.timemodified $detectoperator :{$uniqid}time3)";
+        $where .= ")";
+        $params = array(
+            "{$uniqid}mnethost" => $CFG->mnet_localhost_id,
+            "{$uniqid}time1" => $timecheck,
+            "{$uniqid}time2" => $timecheck,
+            "{$uniqid}time3" => $timecheck
+        );
+        // Append user exclusion.
+        static::append_domain_exclusion($where, 'u.');
+        static::append_user_exclusion($where, $params, 'u.');
+        return [$where, $params];
+    }
+
+    /**
      * Send an e-mail due to a user being unsuspended
      *
      * @param \stdClass $user
      * @return void
      */
-    public static function process_user_unsuspended_email($user)
+    public static function process_user_unsuspended_email($user): bool
     {
         if (!(bool) config::get('send_suspend_email')) {
             return false;
@@ -801,7 +899,7 @@ class util
     /**
      * Returns HTML to display a continue button that goes to a particular URL.
      *
-     * @param string|moodle_url $url The url the button goes to.
+     * @param string|\moodle_url $url The url the button goes to.
      * @param string $buttontext the text to show on the button.
      * @return string the HTML to output.
      */
@@ -823,7 +921,7 @@ class util
      * @param string $id unique id of the tab in this tree, it is used to find selected and/or inactive tabs
      * @param string $pix image name
      * @param string $component component where the image will be looked for
-     * @param string|moodle_url $link
+     * @param string|\moodle_url $link
      * @param string $text text on the tab
      * @param string $title title under the link, by defaul equals to text
      * @param bool $linkedwhenselected whether to display a link under the tab name when it's selected

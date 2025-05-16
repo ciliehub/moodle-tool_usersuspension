@@ -88,6 +88,10 @@ $string['setting:enablecleanup'] = 'Enable Cleanup';
 $string['setting:desc:enablecleanup'] = 'Enables or disables cleanup of users';
 $string['setting:cleanup_interval'] = 'Cleanup interval';
 $string['setting:desc:cleanup_interval'] = 'Sets interval at which cleanup is performed';
+$string['setting:enablecleanupwarning'] = 'E-mails verzenden tbv verwijderen??';
+$string['setting:desc:enablecleanupwarning'] = 'Indien ingeschakeld wordt een email verstuurd naar de eindgebruiker dat het account binnenkort wordt verwijderd.';
+$string['setting:cleanup_warninginterval'] = 'Waarschuwingsperiode';
+$string['setting:desc:cleanup_warninginterval'] = 'Zet de tijd voor verwijdering zodat een eindgebruiker een email zal krijgen over de op hand zijnde verwijdering van diens account.';
 $string['setting:cleanup_deleteafter'] = 'Deletion interval';
 $string['setting:desc:cleanup_deleteafter'] = 'Sets how long after their suspension users should automatically get deleted';
 $string['setting:sendsuspendemail'] = 'Send suspension email?';
@@ -171,6 +175,11 @@ $string['email:user:warning:body'] = '<p>Dear {$a->name}</p>
 <p>Your account will be suspended in {$a->warningperiod} due to inactivity on the platform.</p>
 <p>You must login within the next {$a->warningperiod} to keep your account active.
 To prevent this from occuring in the future, please ensure you log into the system at least once every {$a->suspendinterval}.</p>
+<p>Regards<br/>{$a->signature}</p>';
+$string['email:user:cleanupwarning:subject'] = 'Your account will soon be deleted';
+$string['email:user:cleanupwarning:body'] = '<p>Dear {$a->name}</p>
+<p>Your account will be deleted in {$a->warningperiod} due to inactivity on the platform.</p>
+<p>You are suspended already so contact the admins to reactivate your account.</p>
 <p>Regards<br/>{$a->signature}</p>';
 $string['form:static:uploadfile:desc'] = 'Upload your file with user suspensions here<br/>
 The uploaded CSV file can be configured as follows:<br/>

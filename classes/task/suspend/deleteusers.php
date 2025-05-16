@@ -39,14 +39,16 @@ use tool_usersuspension\config;
  * @author      RvD <helpdesk@sebsoft.nl>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class deleteusers extends \core\task\scheduled_task {
+class deleteusers extends \core\task\scheduled_task
+{
 
     /**
      * Return the localised name for this task
      *
      * @return string task name
      */
-    public function get_name() {
+    public function get_name()
+    {
         return get_string('task:delete', 'tool_usersuspension');
     }
 
@@ -55,18 +57,22 @@ class deleteusers extends \core\task\scheduled_task {
      *
      * @return void
      */
-    public function execute() {
-        if (!(bool)config::get('enabled')) {
+    public function execute()
+    {
+        if (!(bool) config::get('enabled')) {
             mtrace(get_string('config:tool:disabled', 'tool_usersuspension'));
             return;
         }
-        if (!(bool)config::get('enablecleanup')) {
+        if (!(bool) config::get('enablecleanup')) {
             mtrace(get_string('config:cleanup:disabled', 'tool_usersuspension'));
             return false;
         }
 
         $result = false;
         $result = $result || \tool_usersuspension\util::delete_suspended_users();
+
+        // Now email any users in the cleanup warning period.
+        $result = $result || \tool_usersuspension\util::warn_users_of_cleanup();
 
         if ($result) {
             \tool_usersuspension\util::set_lastrun_config('cleanup');

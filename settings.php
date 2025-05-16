@@ -64,6 +64,11 @@ if ($hassiteconfig) {
             get_string('setting:desc:sendsuspendemail', 'tool_usersuspension'),
             '0', '1', '0'));
 
+    $temp->add(new admin_setting_configcheckbox('tool_usersuspension/send_delete_email',
+            get_string('setting:senddeleteemail', 'tool_usersuspension'),
+            get_string('setting:desc:senddeleteemail', 'tool_usersuspension'),
+            '0', '1', '0'));
+
     $temp->add(new admin_setting_configtext('tool_usersuspension/domains_to_exclude',
             get_string('setting:domainstoexclude', 'tool_usersuspension'),
             get_string('setting:desc:domainstoexclude', 'tool_usersuspension'),
@@ -164,10 +169,6 @@ if ($hassiteconfig) {
             get_string('setting:enablecleanup', 'tool_usersuspension'),
             get_string('setting:desc:enablecleanup', 'tool_usersuspension'),
             '0', '1', '0'));
-    $temp->add(new admin_setting_configcheckbox('tool_usersuspension/send_delete_email',
-            get_string('setting:senddeleteemail', 'tool_usersuspension'),
-            get_string('setting:desc:senddeleteemail', 'tool_usersuspension'),
-            '0', '1', '0'));
     // Clean suspended users after XXX.
     $temp->add(new admin_setting_configduration('tool_usersuspension/cleanup_interval',
             get_string('setting:cleanup_interval', 'tool_usersuspension'),
@@ -177,6 +178,15 @@ if ($hassiteconfig) {
             get_string('setting:cleanup_deleteafter', 'tool_usersuspension'),
             get_string('setting:desc:cleanup_deleteafter', 'tool_usersuspension'),
             60 * 86400, 86400));
+    // Warnings to users about cleanup at hand.
+    $temp->add(new admin_setting_configcheckbox('tool_usersuspension/enablecleanup_warning',
+            get_string('setting:enablecleanupwarning', 'tool_usersuspension'),
+            get_string('setting:desc:enablecleanupwarning', 'tool_usersuspension'),
+            '1', '1', '0'));
+    $temp->add(new admin_setting_configduration('tool_usersuspension/cleanup_warninginterval',
+            get_string('setting:cleanup_warninginterval', 'tool_usersuspension'),
+            get_string('setting:desc:cleanup_warninginterval', 'tool_usersuspension'),
+            14 * 86400, 86400));
 
     $ADMIN->add('tools', $temp);
 
