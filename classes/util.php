@@ -28,6 +28,8 @@
 
 namespace tool_usersuspension;
 
+use DateInterval;
+use DateTime;
 use tool_usersuspension\statustable;
 
 /**
@@ -690,12 +692,14 @@ class util
      */
     public static function process_user_suspended_email($user, $automated = true): bool
     {
+        global $SITE;
         if (!(bool) config::get('send_suspend_email')) {
             return false;
         }
         // Prepare and send email.
         $from = \core_user::get_support_user();
         $a = new \stdClass();
+        $a->sitename = format_string($SITE->fullname);
         $a->name = fullname($user);
         $a->timeinactive = static::format_timespan(config::get('smartdetect_suspendafter'));
         $a->contact = $from->email;
@@ -733,11 +737,17 @@ class util
      */
     public static function process_user_smartdetect_warning_email($user): bool
     {
+        global $SITE;
+
         // Prepare and send email.
         $from = \core_user::get_support_user();
         $a = new \stdClass();
         $a->name = fullname($user);
-        $a->suspendinterval = static::format_timespan(config::get('smartdetect_suspendafter'));
+        $interval = config::get('smartdetect_suspendafter');
+        $when = (new DateTime())->add(new DateInterval("PT{$interval}S"));
+        $a->before = $when->format('d-m-Y');
+        $a->sitename = format_string($SITE->fullname);
+        $a->suspendinterval = config::get('smartdetect_suspendafter');
         $a->warningperiod = static::format_timespan(config::get('smartdetect_warninginterval'));
         $a->contact = $from->email;
         $a->signature = fullname($from);
@@ -756,9 +766,15 @@ class util
      */
     public static function process_user_cleanup_warning_email($user): bool
     {
+        global $SITE;
+
         // Prepare and send email.
         $from = \core_user::get_support_user();
         $a = new \stdClass();
+        $interval = config::get('cleanup_deleteafter');
+        $when = (new DateTime())->add(new DateInterval("PT{$interval}S"));
+        $a->before = $when->format('d-m-Y');
+        $a->sitename = format_string($SITE->fullname);
         $a->name = fullname($user);
         $a->cleanupinterval = static::format_timespan(config::get('cleanup_deleteafter'));
         $a->warningperiod = static::format_timespan(config::get('cleanup_warninginterval'));

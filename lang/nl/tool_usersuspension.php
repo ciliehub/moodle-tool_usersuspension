@@ -75,7 +75,7 @@ $string['setting:smartdetect_interval'] = 'Interval voor slimme detectie';
 $string['setting:desc:smartdetect_interval'] = 'Stel interval in hoe vaak slimme detectie draait';
 $string['setting:smartdetect_suspendafter'] = 'Schorsingsinterval';
 $string['setting:desc:smartdetect_suspendafter'] = 'Stel interval in waarop gebruikers als inactief worden aangemerkt en automatisch worden geschorst';
-$string['setting:enablesmartdetectwarning'] = 'E-mails verzenden tbv schorsing??';
+$string['setting:enablesmartdetectwarning'] = 'Waarschuwing versturen voor schorsing (per e-mail)??';
 $string['setting:desc:enablesmartdetectwarning'] = 'Indien ingeschakeld wordt een email verstuurd naar de eindgebruiker dat het account binnenkort wordt geschorst.';
 $string['setting:smartdetect_warninginterval'] = 'Waarschuwingsperiode';
 $string['setting:desc:smartdetect_warninginterval'] = 'Zet de tijd voor schorsing voordat een eindgebruiker een email zal krijgen over de op hand zijnde schorsing van diens account.';
@@ -87,7 +87,7 @@ Wanneer geautomatiseerde verwijdering van gebruikers absoluut niet gewenst is, s
 $string['setting:enablecleanup'] = 'Opschonen inschakelen';
 $string['setting:desc:enablecleanup'] = 'Schakel opschoning van gebruikers in';
 $string['setting:cleanup_interval'] = 'Opschoningsinterval';
-$string['setting:enablecleanupwarning'] = 'E-mails verzenden tbv verwijderen??';
+$string['setting:enablecleanupwarning'] = 'Waarschuwing versturen voor verwijderen (per e-mail)??';
 $string['setting:desc:enablecleanupwarning'] = 'Indien ingeschakeld wordt een email verstuurd naar de eindgebruiker dat het account binnenkort wordt verwijderd.';
 $string['setting:cleanup_warninginterval'] = 'Waarschuwingsperiode';
 $string['setting:desc:cleanup_warninginterval'] = 'Zet de tijd voor verwijdering zodat een eindgebruiker een email zal krijgen over de op hand zijnde verwijdering van diens account.';
@@ -147,11 +147,10 @@ $string['table:status:tosuspend'] = 'Te schorsen gebruikers';
 $string['table:status:delete'] = 'Te verwijderen gebruikers';
 $string['excludeuser'] = 'Uit te sluiten gebruiker';
 
-$string['email:user:suspend:subject'] = 'Je account is geschorst';
+$string['email:user:suspend:subject'] = '[{$a->sitename}] Je account is geschorst';
 $string['email:user:suspend:auto:body'] = '<p>Beste {$a->name}</p>
-<p>Je account is geschorst nadat je {$a->timeinactive} inactief bent geweest</p>
-<p>Als je denkt dat dit ongewenst is of je wilt de schorsing ongedaan laten maken,
-neem dan contact op met {$a->contact}</p>
+<p>Je bent al enige tijd niet meer ingelogd met je account op de {$a->sitename}.</p>
+<p>Uit veiligheidsoverwegingen hebben we je account geblokkeerd. Heb je alsnog toegang nodig tot je account? Neem dan contact op met {$a->contact} om je account te laten herstellen.</p>
 <p>Met vriendelijke groet,<br/>{$a->signature}</p>';
 $string['email:user:suspend:manual:body'] = '<p>Beste {$a->name}</p>
 <p>Je account is geschorst.</p>
@@ -164,13 +163,20 @@ $string['email:user:unsuspend:body'] = '<p>Beste {$a->name}</p>
 <p>Als je denkt dat dit ongewenst is of je wilt de activering ongedaan laten maken,
 neem dan contact op met {$a->contact}</p>
 <p>Met vriendelijke groet,<br/>{$a->signature}</p>';
-$string['email:user:cleanupwarning:subject'] = 'Je account zal binnenkort verwijderd worden.';
+$string['email:user:warning:subject'] = '[{$a->sitename}] Je account wordt binnenkort geschorst.';
+$string['email:user:warning:body'] = '<p>Beste {$a->name}</p>
+<p>Je bent al enige tijd niet meer ingelogd met je account op de {$a->sitename}. Uit veiligheidsoverwegingen blokkeren we daarom binnenkort je account.</p>
+<p>Wil je voorkomen dat dit gebeurt? Zorg dan dat je voor {$a->before} inlogt op de {$a->sitename} om je account te behouden.</p>
+
+<p>Met vriendelijke groet<br/>{$a->signature}</p>';
+$string['email:user:cleanupwarning:subject'] = '[{$a->sitename}] Je account zal binnenkort verwijderd worden.';
 $string['email:user:cleanupwarning:body'] = '<p>Beste {$a->name}</p>
-<p>Je account zal over {$a->warningperiod} worden verwijderd.</p>
-<p>Groeten<br/>{$a->signature}</p>';
-$string['email:user:delete:subject'] = 'Je account is verwijderd';
+<p>Je account op {$a->sitename} is al enige tijd geblokkeerd. Daarom verwijderen we na {$a->before} je account.</p>
+<p>Heb je alsnog toegang nodig tot je account? Neem voor {$a->before} contact op met {$a->contact} om je account te herstellen. Na verwijdering is je account niet meer te herstellen.</p>
+<p>Met vriendelijke groet<br/>{$a->signature}</p>';
+$string['email:user:delete:subject'] = '[{$a->sitename}] Je account is verwijderd';
 $string['email:user:delete:body'] = '<p>Beste {$a->name}</p>
-<p>Je account is verwijderd nadat je {$a->timesuspended} geschorst bent geweest</p>
+<p>Je account op {$a->sitename} is verwijderd nadat je {$a->timesuspended} geschorst bent geweest.</p>
 <p>Met vriendelijke groet,<br/>{$a->signature}</p>';
 $string['form:static:uploadfile:desc'] = 'Upload hier je schorsingsbestand<br/>
 De geuploade CSV kan als volgt geconfigureerd worden:<br/>
