@@ -170,7 +170,7 @@ $string['email:user:delete:subject'] = 'Your account has been removed';
 $string['email:user:delete:body'] = '<p>Dear {$a->name}</p>
 <p>You account has been removed after being suspended for {$a->timesuspended}</p>
 <p>Regards<br/>{$a->signature}</p>';
-$string['email:user:warning:subject'] = 'Your account will soon be suspended';
+$string['email:user:warning:subject'] = '[{$a->sitename}] Your account will soon be suspended';
 $string['email:user:warning:body'] = '<p>Dear {$a->name}</p>
 <p>Your account will be suspended in {$a->warningperiod} due to inactivity on the platform.</p>
 <p>You must login within the next {$a->warningperiod} to keep your account active.
